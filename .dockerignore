@@ -1,0 +1,11 @@
+venv/
+_pycache_/
+*.py[cod]
+.git
+.gitignore
+.env
+.env.*
+uploads/
+chroma_db/
+*.md
+.cursor/

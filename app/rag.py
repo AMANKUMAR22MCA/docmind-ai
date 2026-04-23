@@ -90,7 +90,19 @@ _HEADER_SKIP_RE = re.compile(
 # ChromaDB setup
 client = chromadb.PersistentClient(path="./chroma_db")
 collection = client.get_or_create_collection("documents")
-redis_client = redis.Redis(host="localhost", port=6379, db=2, decode_responses=True)
+_redis_url = os.getenv("REDIS_URL")
+_cache_db = int(os.getenv("REDIS_CACHE_DB", "2"))
+if _redis_url:
+    redis_client = redis.Redis.from_url(
+        _redis_url, db=_cache_db, decode_responses=True
+    )
+else:
+    redis_client = redis.Redis(
+        host=os.getenv("REDIS_HOST", "localhost"),
+        port=int(os.getenv("REDIS_PORT", "6379")),
+        db=_cache_db,
+        decode_responses=True,
+    )
 
 
 class DocumentQueryError(Exception):

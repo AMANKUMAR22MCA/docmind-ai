@@ -9,5 +9,45 @@ services:
     volumes:
       - redis_data:/data
 
+  web:
+    build: .
+    container_name: ai-docqa-web
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: "8000"
+      REDIS_URL: redis://redis:6379
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      REDIS_CACHE_DB: "2"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    volumes:
+      - chroma_data:/app/chroma_db
+      - upload_data:/app/uploads
+    restart: unless-stopped
+
+  worker:
+    build: .
+    container_name: ai-docqa-worker
+    command: celery -A app.celery_app:celery_app worker --loglevel=info
+    environment:
+      REDIS_URL: redis://redis:6379
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      REDIS_CACHE_DB: "2"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    volumes:
+      - chroma_data:/app/chroma_db
+      - upload_data:/app/uploads
+    restart: unless-stopped
+
 volumes:
   redis_data:
+  chroma_data:
+  upload_data:
