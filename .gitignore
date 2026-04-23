@@ -1,0 +1,7 @@
+.env
+chroma_db/
+uploads/
+_pycache_/
+venv/
+*.pyc
+echo * text=auto > .gitattributes

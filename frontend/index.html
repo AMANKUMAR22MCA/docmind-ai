@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DocMind AI - Document Q&A</title>
+  <style>
+    :root {
+      --bg: #090b13;
+      --bg-soft: #0f1320;
+      --card: rgba(16, 22, 38, 0.65);
+      --border: rgba(145, 163, 199, 0.18);
+      --text: #e6edf7;
+      --muted: #9da9be;
+      --primary: #6d7dff;
+      --primary-2: #5ef0c5;
+      --danger: #ff6b7d;
+      --shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+      --radius: 18px;
+      --radius-sm: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background: radial-gradient(1200px 600px at -5% -10%, #1f2b4f66, transparent),
+                  radial-gradient(900px 450px at 105% 0%, #26425666, transparent),
+                  linear-gradient(180deg, #070911 0%, #080b14 100%);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background:
+        linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.02) 35%, transparent 50%),
+        linear-gradient(280deg, transparent 40%, rgba(255, 255, 255, 0.02) 55%, transparent 70%);
+      animation: sheen 14s linear infinite;
+    }
+
+    @keyframes sheen {
+      from { transform: translateX(-8%); }
+      to { transform: translateX(8%); }
+    }
+
+    .container {
+      width: min(1100px, 92vw);
+      margin: 30px auto 50px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 10px 2px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-glow {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: conic-gradient(from 180deg, #7384ff, #5ef0c5, #83a8ff, #7384ff);
+      box-shadow: 0 0 35px #6f80ff80, 0 0 60px #5ef0c533;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.1rem, 2.2vw, 1.55rem);
+      letter-spacing: 0.3px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      overflow: hidden;
+    }
+
+    .card-head {
+      padding: 18px 20px 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 1rem;
+      letter-spacing: 0.2px;
+    }
+
+    .card-desc {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin: 0;
+    }
+
+    .content {
+      padding: 16px 20px 20px;
+    }
+
+    .upload-grid {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+    }
+
+    .upload-actions {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    input[type="file"],
+    input[type="text"],
+    input[type="email"] {
+      width: 100%;
+      border: 1px solid var(--border);
+      background: #0b1222;
+      color: var(--text);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+    }
+
+    input:focus {
+      border-color: #7d8cff;
+      box-shadow: 0 0 0 4px #6d7dff2a;
+    }
+
+    button {
+      border: 0;
+      color: white;
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      font-weight: 600;
+      cursor: pointer;
+      background: linear-gradient(120deg, #6d7dff, #5ef0c5);
+      transition: transform 0.16s ease, filter 0.2s ease, opacity 0.2s ease;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      filter: brightness(1.06);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .muted-btn {
+      background: linear-gradient(120deg, #293551, #1f2840);
+      border: 1px solid var(--border);
+    }
+
+    .status-bar {
+      margin-top: 14px;
+      min-height: 28px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 0.92rem;
+      word-break: break-all;
+    }
+
+    .dot-spinner {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid #6072b8;
+      border-top-color: var(--primary-2);
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 11px;
+      background: #10182c;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: #c8d5ef;
+      font-size: 0.8rem;
+    }
+
+    .chat-wrap {
+      display: none;
+    }
+
+    .chat-wrap.visible {
+      display: block;
+      animation: rise 0.34s ease;
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .chat-controls {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .chat-history {
+      max-height: min(56vh, 620px);
+      overflow-y: auto;
+      padding: 14px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, #0a1120, #0a111e);
+      border: 1px solid var(--border);
+      scroll-behavior: smooth;
+    }
+
+    .msg {
+      margin: 9px 0;
+      display: flex;
+    }
+
+    .msg .bubble {
+      max-width: min(82%, 780px);
+      padding: 11px 13px;
+      border-radius: 14px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 0.96rem;
+      border: 1px solid transparent;
+    }
+
+    .msg.user {
+      justify-content: flex-end;
+    }
+
+    .msg.user .bubble {
+      background: linear-gradient(120deg, #2a3869, #273a60);
+      border-color: #4b5ea0;
+      border-bottom-right-radius: 5px;
+    }
+
+    .msg.ai .bubble {
+      background: linear-gradient(120deg, #111a31, #0f1a2e);
+      border-color: #23335f;
+      border-bottom-left-radius: 5px;
+    }
+
+    .chat-input-row {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .chat-input-row .question-wrap {
+      min-width: 0;
+    }
+
+    .api-context-panel {
+      margin-top: 12px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #0b1324;
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .api-context-panel.hidden {
+      display: none;
+    }
+
+    .api-context-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .api-context-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #c8d5ef;
+      font-size: 0.88rem;
+    }
+
+    .cache-mode-row {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .inline-link-btn {
+      border: 1px solid var(--border);
+      background: #111a30;
+      color: #cdd9f3;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      border: 1px solid var(--border);
+      background: #09101f;
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 12px;
+      outline: none;
+      resize: vertical;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.84rem;
+      line-height: 1.45;
+    }
+
+    textarea:focus {
+      border-color: #7d8cff;
+      box-shadow: 0 0 0 4px #6d7dff2a;
+    }
+
+    .typing {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+      color: #c1cce2;
+      font-size: 0.92rem;
+    }
+
+    .typing.visible {
+      display: inline-flex;
+    }
+
+    .typing .loader {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 3px solid #34446f;
+      border-top-color: #5ef0c5;
+      animation: spin 0.85s linear infinite;
+    }
+
+    .hint-row {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 0.86rem;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .error {
+      color: #ff9cab;
+    }
+
+    .success {
+      color: #80f6d0;
+    }
+
+    @media (max-width: 760px) {
+      .container { width: min(1100px, 95vw); }
+      .upload-grid,
+      .upload-actions,
+      .chat-controls,
+      .chat-input-row {
+        grid-template-columns: 1fr;
+      }
+      .chat-input-row button {
+        width: 100%;
+      }
+      button { width: 100%; }
+      .msg .bubble { max-width: 92%; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <div class="header">
+      <div class="brand">
+        <div class="brand-glow"></div>
+        <div>
+          <h1>DocMind AI - Document Q&A</h1>
+          <div class="subtitle">Upload a PDF, then ask smart questions with conversation memory.</div>
+        </div>
+      </div>
+      <span class="pill" id="sessionPill">No PDF selected</span>
+    </div>
+
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <h2 class="card-title">1) Upload PDF</h2>
+          <p class="card-desc">Your document is processed asynchronously before chat starts.</p>
+        </div>
+      </div>
+      <div class="content">
+        <div class="upload-grid">
+          <input id="pdfInput" type="file" accept="application/pdf,.pdf" />
+          <button id="uploadBtn">Upload PDF</button>
+        </div>
+        <div class="upload-actions">
+          <button id="existingDocsBtn" class="muted-btn">Chat with Existing Docs</button>
+          <button id="clearCacheBtn" class="muted-btn">Clear Cache (This PDF)</button>
+          <button id="clearBtn" class="muted-btn">Clear Chat & Refresh</button>
+        </div>
+        <div class="status-bar" id="uploadStatus"></div>
+      </div>
+    </section>
+
+    <section class="card chat-wrap" id="chatWrap">
+      <div class="card-head">
+        <div>
+          <h2 class="card-title">2) Chat with your document</h2>
+          <p class="card-desc">Include email to resolve existing docs or continue active PDF session.</p>
+        </div>
+      </div>
+      <div class="content">
+        <div class="chat-controls">
+          <input id="emailInput" type="email" placeholder="Email (required for Existing Docs mode, optional after upload)" />
+        </div>
+
+        <div id="chatHistory" class="chat-history">
+          <div class="msg ai">
+            <div class="bubble">Ready when you are. Ask anything about your uploaded document.</div>
+          </div>
+        </div>
+
+        <div class="typing" id="typingState">
+          <div class="loader"></div>
+          <span>AI is thinking...</span>
+        </div>
+
+        <div class="chat-input-row">
+          <div class="question-wrap">
+            <input id="questionInput" type="text" placeholder="Type your question and press Enter..." />
+          </div>
+          <button id="sendBtn" type="button">Send</button>
+          <button id="useCurrentPdfBtn" class="muted-btn" type="button">Use Uploaded PDF</button>
+        </div>
+
+        <button id="toggleManualHistoryBtn" class="inline-link-btn" type="button">Add History Context (Optional)</button>
+
+        <div class="api-context-panel hidden" id="manualHistoryPanel">
+          <div class="api-context-head">
+            <span>Direct API Context (Postman-style)</span>
+            <label class="api-context-toggle">
+              <input id="useManualHistory" type="checkbox" />
+              Use this JSON history in `/ask`
+            </label>
+          </div>
+          <textarea id="manualHistoryInput" placeholder='[{"role":"user","content":"What companies did Aman work at?"},{"role":"assistant","content":"Osfin.ai, Synoriq, Kavion.ai, Avishaan"}]'></textarea>
+          <div class="cache-mode-row">
+            <span>Cache mode</span>
+            <label class="api-context-toggle">
+              <input id="useQuestionOnlyCache" type="checkbox" />
+              Stable cache (question only, ignore history in cache key)
+            </label>
+          </div>
+        </div>
+
+        <div class="hint-row">
+          <span>Conversation history is automatically sent with every question.</span>
+          <span id="historyCount">History messages: 0</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const API_BASE = "http://localhost:8000";
+    const POLL_INTERVAL_MS = 2000;
+
+    const el = {
+      pdfInput: document.getElementById("pdfInput"),
+      uploadBtn: document.getElementById("uploadBtn"),
+      existingDocsBtn: document.getElementById("existingDocsBtn"),
+      clearCacheBtn: document.getElementById("clearCacheBtn"),
+      uploadStatus: document.getElementById("uploadStatus"),
+      chatWrap: document.getElementById("chatWrap"),
+      chatHistory: document.getElementById("chatHistory"),
+      questionInput: document.getElementById("questionInput"),
+      sendBtn: document.getElementById("sendBtn"),
+      useCurrentPdfBtn: document.getElementById("useCurrentPdfBtn"),
+      emailInput: document.getElementById("emailInput"),
+      toggleManualHistoryBtn: document.getElementById("toggleManualHistoryBtn"),
+      manualHistoryPanel: document.getElementById("manualHistoryPanel"),
+      useManualHistory: document.getElementById("useManualHistory"),
+      manualHistoryInput: document.getElementById("manualHistoryInput"),
+      useQuestionOnlyCache: document.getElementById("useQuestionOnlyCache"),
+      typingState: document.getElementById("typingState"),
+      clearBtn: document.getElementById("clearBtn"),
+      sessionPill: document.getElementById("sessionPill"),
+      historyCount: document.getElementById("historyCount")
+    };
+
+    let currentPdfId = "";
+    /** "upload" = pdf_id from Upload in this tab; "email" = pdf_id returned from /ask lookup */
+    let pdfIdSource = null;
+    let conversationHistory = [];
+    let chatMode = "uploaded_pdf";
+
+    function parseManualHistory() {
+      const raw = el.manualHistoryInput.value.trim();
+      if (!raw) return [];
+      let parsed;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        throw new Error("Manual history must be valid JSON.");
+      }
+
+      // Accept either:
+      // 1) direct history array
+      // 2) full payload object that contains { history: [...] }
+      if (!Array.isArray(parsed) && parsed && typeof parsed === "object" && Array.isArray(parsed.history)) {
+        parsed = parsed.history;
+      }
+
+      if (!Array.isArray(parsed)) {
+        throw new Error("Manual history must be an array, or an object containing 'history'.");
+      }
+      for (const item of parsed) {
+        const valid = item && typeof item === "object" &&
+          typeof item.role === "string" && typeof item.content === "string";
+        if (!valid) {
+          throw new Error("Each history item must have string fields: role, content.");
+        }
+      }
+      return parsed;
+    }
+
+    function toggleManualHistoryPanel() {
+      const willShow = el.manualHistoryPanel.classList.contains("hidden");
+      el.manualHistoryPanel.classList.toggle("hidden", !willShow);
+      el.toggleManualHistoryBtn.textContent = willShow
+        ? "Hide History Context"
+        : "Add History Context (Optional)";
+    }
+
+    function setUploadStatus(text, type = "") {
+      el.uploadStatus.className = "status-bar";
+      if (type) el.uploadStatus.classList.add(type);
+      el.uploadStatus.innerHTML = text;
+    }
+
+    function setSessionPill(text) {
+      el.sessionPill.textContent = text;
+    }
+
+    function startExistingDocsMode() {
+      chatMode = "existing_docs";
+      el.chatWrap.classList.add("visible");
+      setSessionPill("Mode: Existing Docs (Email)");
+      setUploadStatus("Existing Docs mode enabled. Enter email and ask your question.", "success");
+      appendMessage("ai", "Existing Docs mode enabled. Enter your email and ask a question to search your stored documents.");
+      el.emailInput.focus();
+    }
+
+    function setTyping(show) {
+      el.typingState.classList.toggle("visible", show);
+      el.sendBtn.disabled = show;
+    }
+
+    function appendMessage(role, text) {
+      const wrapper = document.createElement("div");
+      wrapper.className = `msg ${role}`;
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = text;
+
+      wrapper.appendChild(bubble);
+      el.chatHistory.appendChild(wrapper);
+      el.chatHistory.scrollTop = el.chatHistory.scrollHeight;
+    }
+
+    function updateHistoryCount() {
+      el.historyCount.textContent = `History messages: ${conversationHistory.length}`;
+    }
+
+    async function pollTask(taskId) {
+      while (true) {
+        const response = await fetch(`${API_BASE}/status/${taskId}`);
+        if (!response.ok) throw new Error(`Status polling failed (${response.status})`);
+        const data = await response.json();
+
+        if (data.status === "SUCCESS") return data;
+        if (data.status === "FAILURE") {
+          const reason = typeof data.result === "string" ? data.result : JSON.stringify(data.result);
+          throw new Error(`Processing failed: ${reason || "unknown error"}`);
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+      }
+    }
+
+    async function handleUpload() {
+      const file = el.pdfInput.files[0];
+      if (!file) {
+        setUploadStatus("Please choose a PDF file first.", "error");
+        return;
+      }
+      if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+        setUploadStatus("Only PDF files are allowed.", "error");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      el.uploadBtn.disabled = true;
+      setUploadStatus('<span class="dot-spinner"></span><span>Processing...</span>');
+
+      try {
+        const uploadRes = await fetch(`${API_BASE}/upload`, { method: "POST", body: formData });
+        if (!uploadRes.ok) throw new Error(`Upload failed (${uploadRes.status})`);
+        const uploadData = await uploadRes.json();
+
+        currentPdfId = uploadData.pdf_id || "";
+        setSessionPill(currentPdfId ? `PDF: ${currentPdfId}` : "No PDF selected");
+        setUploadStatus('<span class="dot-spinner"></span><span>Processing...</span>');
+
+        await pollTask(uploadData.task_id);
+
+        setUploadStatus(
+          `Processed successfully. pdf_id: <strong>${currentPdfId}</strong> — Celery ingest finished; you can ask questions.`,
+          "success"
+        );
+        pdfIdSource = "upload";
+        chatMode = "uploaded_pdf";
+        el.chatWrap.classList.add("visible");
+        el.questionInput.focus();
+      } catch (err) {
+        setUploadStatus(err.message || "Upload failed. Please try again.", "error");
+      } finally {
+        el.uploadBtn.disabled = false;
+      }
+    }
+
+    async function handleSend() {
+      const question = el.questionInput.value.trim();
+      if (!question) {
+        appendMessage("ai", "Please type your question first, then click Send.");
+        el.questionInput.focus();
+        return;
+      }
+
+      const email = el.emailInput.value.trim();
+      const requiresEmail = chatMode === "existing_docs" && !email;
+      if (requiresEmail) {
+        appendMessage("ai", "Please provide your email to chat with stored documents.");
+        el.emailInput.focus();
+        return;
+      }
+
+      if (!currentPdfId && !email) {
+        appendMessage("ai", "Upload a PDF first, or click 'Chat with Existing Docs' and provide your email.");
+        return;
+      }
+
+      appendMessage("user", question);
+      conversationHistory.push({ role: "user", content: question });
+      updateHistoryCount();
+      el.questionInput.value = "";
+      setTyping(true);
+
+      try {
+        const historyForRequest = el.useManualHistory.checked
+          ? parseManualHistory()
+          : conversationHistory;
+
+        const payload = {
+          question,
+          pdf_id: chatMode === "uploaded_pdf" ? (currentPdfId || undefined) : undefined,
+          email: email || undefined,
+          history: historyForRequest,
+          cache_mode: el.useQuestionOnlyCache.checked ? "question_only" : "context"
+        };
+
+        let response;
+        try {
+          response = await fetch(`${API_BASE}/ask`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+        } catch (netErr) {
+          appendMessage(
+            "ai",
+            `Network error: ${netErr.message || netErr}. Check that the API is running at ${API_BASE} and CORS allows this page.`
+          );
+          return;
+        }
+
+        let data = {};
+        try {
+          data = await response.json();
+        } catch {
+          data = {};
+        }
+
+        if (!response.ok) {
+          const serverMsg = data.error || data.detail || `HTTP ${response.status}`;
+          appendMessage("ai", `Error: ${serverMsg}`);
+          return;
+        }
+
+        const answer = data.answer || data.error || "No answer returned.";
+
+        if (data.pdf_id && !currentPdfId) {
+          currentPdfId = data.pdf_id;
+          pdfIdSource = "email";
+          setSessionPill(`PDF: ${currentPdfId}`);
+          el.chatWrap.classList.add("visible");
+        }
+
+        appendMessage("ai", answer);
+        conversationHistory.push({ role: "assistant", content: answer });
+        updateHistoryCount();
+      } catch (err) {
+        const message = err.message || "Request failed.";
+        appendMessage("ai", `Error: ${message}`);
+      } finally {
+        setTyping(false);
+      }
+    }
+
+    function clearConversation() {
+      window.location.reload();
+    }
+
+    async function clearPdfCache() {
+      if (!currentPdfId) {
+        appendMessage("ai", "No active PDF selected. Upload or resolve a PDF first.");
+        return;
+      }
+
+      el.clearCacheBtn.disabled = true;
+      setUploadStatus("Clearing cache for current PDF...");
+      try {
+        const response = await fetch(`${API_BASE}/cache/clear`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ scope: "pdf", pdf_id: currentPdfId })
+        });
+        const data = await response.json();
+        if (!response.ok || data.error) {
+          throw new Error(data.error || `Cache clear failed (${response.status})`);
+        }
+        const deleted = data.deleted_keys ?? 0;
+        setUploadStatus(`Cache cleared for pdf_id: ${currentPdfId} (deleted ${deleted} keys)`, "success");
+        appendMessage("ai", `Cache cleared for current PDF. (${deleted} keys removed)`);
+      } catch (err) {
+        setUploadStatus(err.message || "Failed to clear cache.", "error");
+        appendMessage("ai", `Error clearing cache: ${err.message || "Unknown error"}`);
+      } finally {
+        el.clearCacheBtn.disabled = false;
+      }
+    }
+
+    let usePdfModeLastTs = 0;
+    function useUploadedPdfMode() {
+      const now = Date.now();
+      if (now - usePdfModeLastTs < 400) return;
+      usePdfModeLastTs = now;
+
+      const wasExistingDocs = chatMode === "existing_docs";
+      chatMode = "uploaded_pdf";
+      if (currentPdfId) {
+        setSessionPill(`PDF: ${currentPdfId}`);
+        if (wasExistingDocs) {
+          if (pdfIdSource === "upload") {
+            appendMessage("ai", "Switched to PDF-from-upload mode. Questions will use the file you uploaded in this tab.");
+          } else {
+            appendMessage(
+              "ai",
+              "Switched to fixed-document mode. Questions will use the PDF already linked to this session (e.g. found via your email), not a new upload from this tab."
+            );
+          }
+        }
+      } else {
+        setSessionPill("No PDF selected");
+        appendMessage("ai", "No PDF is active yet. Upload a PDF, or use Existing Docs with your email so a document can be found.");
+      }
+    }
+
+    el.uploadBtn.addEventListener("click", handleUpload);
+    el.existingDocsBtn.addEventListener("click", startExistingDocsMode);
+    el.clearCacheBtn.addEventListener("click", clearPdfCache);
+    el.sendBtn.addEventListener("click", handleSend);
+    el.useCurrentPdfBtn.addEventListener("click", useUploadedPdfMode);
+    el.toggleManualHistoryBtn.addEventListener("click", toggleManualHistoryPanel);
+    el.clearBtn.addEventListener("click", clearConversation);
+    el.questionInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    });
+  </script>
+</body>
+</html>
