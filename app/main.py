@@ -2,6 +2,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import Limiter
+from fastapi.staticfiles import StaticFiles
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -23,6 +24,7 @@ app = FastAPI()
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
 
+
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # ------------------ Exception Handler ------------------
@@ -36,7 +38,7 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
 # ------------------ CORS ------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5500", "http://127.0.0.1:5500"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -172,3 +174,5 @@ def get_status(task_id: str):
             else None
         )
     }
+
+app.mount("/app", StaticFiles(directory="frontend", html=True), name="frontend")
