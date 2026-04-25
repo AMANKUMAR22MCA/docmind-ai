@@ -111,3 +111,4 @@ pymupdf==1.24.3
 pdfplumber==0.11.0
 groq==0.11.0
 python-multipart==0.0.9
+pypdf==4.3.1
