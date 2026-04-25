@@ -94,7 +94,10 @@ _redis_url = os.getenv("REDIS_URL")
 _cache_db = int(os.getenv("REDIS_CACHE_DB", "2"))
 if _redis_url:
     redis_client = redis.Redis.from_url(
-        _redis_url, db=_cache_db, decode_responses=True
+        _redis_url,
+        db=_cache_db,
+        decode_responses=True,
+        ssl_cert_reqs=None
     )
 else:
     redis_client = redis.Redis(
