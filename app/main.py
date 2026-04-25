@@ -1,13 +1,11 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from slowapi import Limiter
 from fastapi.staticfiles import StaticFiles
+from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from celery.result import AsyncResult
-from app.celery_app import celery_app
 from app.schemas import AskRequest, CacheRequest
 from . import rag
 
@@ -19,11 +17,13 @@ limiter = Limiter(key_func=get_remote_address)
 MAX_SIZE = 10 * 1024 * 1024  # 10MB
 UPLOAD_DIR = "uploads"
 
+# In-memory task status store
+task_status = {}
+
 # ------------------ App Init ------------------
 app = FastAPI()
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
-
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
@@ -49,33 +49,36 @@ app.add_middleware(
 def health():
     return {"status": "ok"}
 
+# ------------------ Background Task ------------------
+def process_pdf_background(pdf_path: str, pdf_id: str, task_id: str):
+    try:
+        task_status[task_id] = {"status": "PROCESSING", "result": None}
+        rag.ingest_pdf(pdf_path, pdf_id)
+        task_status[task_id] = {"status": "SUCCESS", "result": {"pdf_id": pdf_id}}
+    except Exception as e:
+        task_status[task_id] = {"status": "FAILURE", "result": str(e)}
+
 # ------------------ Upload ------------------
 @app.post("/upload")
 @limiter.limit("5/minute")
-async def upload_pdf(request: Request, file: UploadFile = File(...)):
-
-    # Validate content type
+async def upload_pdf(request: Request, background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="File must be a PDF")
 
     pdf_id = str(uuid.uuid4())
+    task_id = str(uuid.uuid4())
     pdf_path = os.path.join(UPLOAD_DIR, f"{pdf_id}.pdf")
-
     size = 0
 
     try:
         with open(pdf_path, "wb") as f:
-            while chunk := await file.read(1024 * 1024):  # 1MB chunks
+            while chunk := await file.read(1024 * 1024):
                 size += len(chunk)
-
                 if size > MAX_SIZE:
                     os.remove(pdf_path)
                     raise HTTPException(status_code=400, detail="File too large. Max 10MB")
-
                 f.write(chunk)
-
         await file.close()
-
     except HTTPException:
         raise
     except Exception:
@@ -83,20 +86,14 @@ async def upload_pdf(request: Request, file: UploadFile = File(...)):
             os.remove(pdf_path)
         raise HTTPException(status_code=500, detail="File save failed")
 
-    # Trigger Celery task
-    from app.tasks import ingest_pdf_task
-    task = ingest_pdf_task.delay(pdf_path, pdf_id)
+    task_status[task_id] = {"status": "PENDING", "result": None}
+    background_tasks.add_task(process_pdf_background, pdf_path, pdf_id, task_id)
 
-    return {
-        "pdf_id": pdf_id,
-        "task_id": task.id,
-        "status": "processing"
-    }
+    return {"pdf_id": pdf_id, "task_id": task_id, "status": "processing"}
 
 # ------------------ Ask ------------------
 @app.post("/ask")
 async def ask_question(payload: AskRequest):
-
     pdf_id = payload.pdf_id
 
     if not pdf_id:
@@ -107,10 +104,7 @@ async def ask_question(payload: AskRequest):
         )
 
     if not pdf_id:
-        raise HTTPException(
-            status_code=400,
-            detail="Provide pdf_id or email/name/phone"
-        )
+        raise HTTPException(status_code=400, detail="Provide pdf_id or email/name/phone")
 
     try:
         answer = rag.ask_question(
@@ -120,59 +114,33 @@ async def ask_question(payload: AskRequest):
             cache_mode=payload.cache_mode,
         )
     except rag.DocumentQueryError as exc:
-        return JSONResponse(
-            status_code=503,
-            content={"error": exc.message, "pdf_id": pdf_id}
-        )
+        return JSONResponse(status_code=503, content={"error": exc.message, "pdf_id": pdf_id})
 
     return {"answer": answer, "pdf_id": pdf_id}
 
 # ------------------ Cache Clear ------------------
 @app.post("/cache/clear")
 async def clear_cache(payload: CacheRequest):
-
     if payload.scope not in {"pdf", "all"}:
-        raise HTTPException(
-            status_code=400,
-            detail="scope must be 'pdf' or 'all'"
-        )
+        raise HTTPException(status_code=400, detail="scope must be 'pdf' or 'all'")
 
     if payload.scope == "all":
         rag.clear_answer_cache()
-        return {
-            "status": "ok",
-            "scope": "all",
-            "message": "All answer cache cleared"
-        }
+        return {"status": "ok", "scope": "all", "message": "All answer cache cleared"}
 
     if not payload.pdf_id:
-        raise HTTPException(
-            status_code=400,
-            detail="pdf_id is required when scope is 'pdf'"
-        )
+        raise HTTPException(status_code=400, detail="pdf_id is required when scope is 'pdf'")
 
     deleted = rag.clear_answer_cache(pdf_id=payload.pdf_id)
-
-    return {
-        "status": "ok",
-        "scope": "pdf",
-        "pdf_id": payload.pdf_id,
-        "deleted_keys": deleted
-    }
+    return {"status": "ok", "scope": "pdf", "pdf_id": payload.pdf_id, "deleted_keys": deleted}
 
 # ------------------ Task Status ------------------
 @app.get("/status/{task_id}")
 def get_status(task_id: str):
-    result = AsyncResult(task_id, app=celery_app)
+    task = task_status.get(task_id)
+    if not task:
+        return {"task_id": task_id, "status": "PENDING", "result": None}
+    return {"task_id": task_id, "status": task["status"], "result": task["result"]}
 
-    return {
-        "task_id": task_id,
-        "status": result.status,
-        "result": (
-            str(result.result) if result.failed()
-            else result.result if result.ready()
-            else None
-        )
-    }
-
+# ------------------ Frontend ------------------
 app.mount("/app", StaticFiles(directory="frontend", html=True), name="frontend")
