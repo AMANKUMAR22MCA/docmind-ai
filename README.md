@@ -8,10 +8,6 @@
 
 <br/><br/>
 
-<h3>
-  <samp>🧠 Upload. Ask. Understand.</samp>
-</h3>
-
 </div>
 
 <h3>
