@@ -1,9 +1,18 @@
 <div align="center">
 
-<!-- Hero Banner -->
-<img width="100%" src="https://docmind-ai-1c2y.onrender.com/app/"/>
+<h2>🚀 Live Demo</h2>
 
-<br/>
+<a href="https://docmind-ai-1c2y.onrender.com/app/" target="_blank">
+  🔗 Click here to try the app
+</a>
+
+<br/><br/>
+
+<h3>
+  <samp>🧠 Upload. Ask. Understand.</samp>
+</h3>
+
+</div>
 
 <h3>
   <samp>🧠 Upload. Ask. Understand.</samp>
