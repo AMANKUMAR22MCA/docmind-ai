@@ -1,7 +1,7 @@
 <div align="center">
 
 <!-- Hero Banner -->
-<img width="100%" src="https://capsule-render.vercel.app/api?type=waving&color=0:0f0c29,50:302b63,100:24243e&height=200&section=header&text=DocMind%20AI&fontSize=80&fontColor=ffffff&animation=fadeIn&fontAlignY=35&desc=Document%20Q%26A%20System&descAlignY=58&descColor=a78bfa"/>
+<img width="100%" src="https://docmind-ai-1c2y.onrender.com/app/"/>
 
 <br/>
 
