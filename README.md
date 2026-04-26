@@ -45,8 +45,8 @@
 
 | Chat Interface | Upload & Process | API Documentation |
 |:-:|:-:|:-:|
-|(<img width="935" height="400" alt="image" src="https://github.com/user-attachments/assets/9c2fa9fb-597d-42b1-9e64-39e5bf8c2299" />
-) | ![Upload](https://via.placeholder.com/280x180/0f0f1a/38bdf8?text=PDF+Upload) | ![API Docs](https://via.placeholder.com/280x180/0f0f1a/34d399?text=Swagger+UI) |
+|<img width="935" height="400" alt="image" src="https://github.com/user-attachments/assets/9c2fa9fb-597d-42b1-9e64-39e5bf8c2299" />| <img width="947" height="412" alt="image" src="https://github.com/user-attachments/assets/5a09c79a-0c5a-4c20-8cb2-aee1d2f0c3e2" />
+ | ![API Docs](https://via.placeholder.com/280x180/0f0f1a/34d399?text=Swagger+UI) |
 | *Multi-turn dark theme chat* | *Async processing status* | *Auto-generated FastAPI docs* |
 
 </div>
